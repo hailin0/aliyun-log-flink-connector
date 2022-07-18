@@ -5,6 +5,7 @@ import com.aliyun.openservices.log.common.FastLogContent;
 import com.aliyun.openservices.log.common.FastLogGroup;
 import com.aliyun.openservices.log.common.FastLogTag;
 import com.aliyun.openservices.log.common.LogGroupData;
+import com.aliyun.openservices.log.flink.model.Collector;
 import com.aliyun.openservices.log.flink.model.LogDeserializationSchema;
 import com.aliyun.openservices.log.flink.model.PullLogsResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -32,7 +33,7 @@ public class RawLogGroupListDeserializer implements LogDeserializationSchema<Raw
         return Long.parseLong(timestamp);
     }
 
-    public RawLogGroupList deserialize(PullLogsResult record) {
+    public void deserialize(PullLogsResult record, Collector<RawLogGroupList> collector) {
         RawLogGroupList logGroupList = new RawLogGroupList();
         List<LogGroupData> logGroups = record.getLogGroupList();
         long offset = decodeCursor(record.getCursor());
@@ -63,7 +64,7 @@ public class RawLogGroupListDeserializer implements LogDeserializationSchema<Raw
             logGroupList.add(rawLogGroup);
             ++offset;
         }
-        return logGroupList;
+        collector.collect(logGroupList);
     }
 
     public TypeInformation<RawLogGroupList> getProducedType() {

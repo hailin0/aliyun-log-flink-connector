@@ -6,6 +6,7 @@ import com.aliyun.openservices.log.flink.ConfigConstants;
 import com.aliyun.openservices.log.flink.ShardAssigner;
 import com.aliyun.openservices.log.flink.util.LogClientProxy;
 import com.aliyun.openservices.log.flink.util.LogUtil;
+import java.util.Optional;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.util.StringUtils;
@@ -249,7 +250,7 @@ public class LogDataFetcher<T> {
     }
 
     private void createConsumerForShard(int index, LogstoreShardMeta shard) {
-        ShardConsumer<T> consumer = new ShardConsumer<>(this, deserializer, index, configProps, logClient, autoCommitter);
+        ShardConsumer<T> consumer = new ShardConsumer<>(this, index, configProps, logClient, autoCommitter);
         if (!running) {
             // Do not create consumer any more
             return;
@@ -357,9 +358,11 @@ public class LogDataFetcher<T> {
         }
     }
 
-    void emitRecordAndUpdateState(T record, long recordTimestamp, int shardStateIndex, String cursor) {
+    void emitRecordAndUpdateState(PullLogsResult record, long recordTimestamp, int shardStateIndex, String cursor) {
         synchronized (checkpointLock) {
-            sourceContext.collectWithTimestamp(record, recordTimestamp);
+            deserializer.deserialize(record,
+                (r, t) -> sourceContext.collectWithTimestamp(
+                    r, Optional.ofNullable(t).orElse(recordTimestamp)));
             LogstoreShardState state = subscribedShardsState.get(shardStateIndex);
             if (state != null) {
                 state.setOffset(cursor);

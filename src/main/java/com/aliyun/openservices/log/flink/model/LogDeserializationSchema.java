@@ -10,7 +10,7 @@ public interface LogDeserializationSchema<T> extends Serializable, ResultTypeQue
      * Deserialize pull logs result to Flink records.
      *
      * @param record LogGroup list.
-     * @return
+     * @param collector log item collector
      */
-    T deserialize(PullLogsResult record);
+    void deserialize(PullLogsResult record, Collector<T> collector);
 }
