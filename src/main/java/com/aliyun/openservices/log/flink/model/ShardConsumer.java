@@ -20,7 +20,6 @@ public class ShardConsumer<T> implements Runnable {
     private static final int FORCE_SLEEP_THRESHOLD = 256 * 1024;
 
     private final LogDataFetcher<T> fetcher;
-    private final LogDeserializationSchema<T> deserializer;
     private final int subscribedShardStateIndex;
     private final int fetchSize;
     private final long fetchIntervalMs;
@@ -35,13 +34,11 @@ public class ShardConsumer<T> implements Runnable {
     private int stopTimeSec = -1;
 
     ShardConsumer(LogDataFetcher<T> fetcher,
-                  LogDeserializationSchema<T> deserializer,
                   int subscribedShardStateIndex,
                   Properties configProps,
                   LogClientProxy logClient,
                   CheckpointCommitter committer) {
         this.fetcher = fetcher;
-        this.deserializer = deserializer;
         this.subscribedShardStateIndex = subscribedShardStateIndex;
         // TODO Move configs to a class
         this.fetchSize = LogUtil.getNumberPerFetch(configProps);
@@ -226,7 +223,6 @@ public class ShardConsumer<T> implements Runnable {
                                              LogstoreShardMeta shard,
                                              String nextCursor) {
         PullLogsResult record = new PullLogsResult(records, shard.getShardId(), cursor, nextCursor);
-        final T value = deserializer.deserialize(record);
         long timestamp = System.currentTimeMillis();
         if (!records.isEmpty()) {
             // Use the timestamp of first log for perf consideration.
@@ -236,7 +232,7 @@ public class ShardConsumer<T> implements Runnable {
                 timestamp = logTimeStamp * 1000;
             }
         }
-        fetcher.emitRecordAndUpdateState(value, timestamp, subscribedShardStateIndex, nextCursor);
+        fetcher.emitRecordAndUpdateState(record, timestamp, subscribedShardStateIndex, nextCursor);
         if (committer != null) {
             committer.updateCheckpoint(shard, nextCursor, isReadOnly);
         }
